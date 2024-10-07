@@ -1,6 +1,6 @@
 import pulp
 import numpy as np
-
+from copy import deepcopy, copy
 """
 This script defines the classes MultiObjectiveLinearProgram() and Solution() to handle multi-objective linear programs.
 """
@@ -20,8 +20,12 @@ class MultiObjectiveLinearProgram():
 
     def compute_individual_optima(self):
         self.individual_optima = []
-        for f in self.objective_functions:
-            self.prob.setObjective(f)
+        for i, f in enumerate(self.objective_functions):
+            # Create the aggregated objective function
+            aggregated_objective = f + 0.000001 * sum(self.objective_functions[j] for j in range(self.num_objectives) if j != i)
+            self.prob.setObjective(aggregated_objective)
+            #single_objective = f
+            #self.prob.setObjective(single_objective)            
             self.prob.solve(pulp.PULP_CBC_CMD(msg=0))
             solution = Solution(self.prob, self.objective_functions_names)
             self.individual_optima.append(solution)
@@ -81,13 +85,35 @@ class Solution():
             self.objective_dict = {v.name: v.varValue for v in self.prob.variables() if v.name in self.objective_names}
             self.decision_values = np.array([v.varValue for v in self.prob.variables() if not v.name in self.objective_names])
             self.decision_dict = {v.name: v.varValue for v in self.prob.variables() if not v.name in self.objective_names}
-        
+    
+    def replace_solution_giving_objective_dict(self, variable_dict):
+
+        sub_problem = copy(self.prob)
+
+        for var_name, var_value in variable_dict.items():
+            sub_problem += [v for v in sub_problem.variables() if v.name == var_name][0] == var_value
+        sub_problem.solve(pulp.PULP_CBC_CMD(msg=0))
+
+        self.objective_values = np.array([v.varValue for v in sub_problem.variables() if v.name in self.objective_names])
+        self.decision_values = np.array([v.varValue for v in sub_problem.variables() if not v.name in self.objective_names]) 
+    
+    
+    """
     # Set an arbitrary point of the decision space (given by a dictionary)
     def set_decision_dict(self,arbitrary_decision_dict):
         self.decision_dict = arbitrary_decision_dict
-        self.decision_values = np.array([v for k,v in arbitrary_decision_dict.items])
+        self.decision_values = np.array([v for k,v in self.decision_dict.items()])
 
     # Set an arbitrary point of the objective space (given by a dictionary)
     def set_objective_dict(self,arbitrary_objective_dict):
         self.objective_dict = arbitrary_objective_dict
-        self.objective_values = np.array([v for k,v in arbitrary_objective_dict.items])
+        self.objective_values = np.array([v for k,v in self.objective_dict.items()])
+
+    def set_decision_values(self,arbitrary_decision_values):
+        self.decision_values = arbitrary_decision_values
+        self.decision_dict = {k:v for k,v in zip(self.decision_dict.keys(), arbitrary_decision_values)}
+
+    def set_objective_values(self,arbitrary_objective_values):
+        self.objective_values = arbitrary_objective_values
+        self.objective_dict = {k:v for k,v in zip(self.objective_dict.keys(), arbitrary_objective_values)}
+    """
