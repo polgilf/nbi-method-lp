@@ -2,8 +2,8 @@ import pulp
 import numpy as np
 from copy import deepcopy, copy
 
-from MultiObjectiveLinearProgram import MultiObjectiveLinearProgram, Solution
-from NormalBoundaryIntersection import NormalBoundaryIntersection #, distribute_line_points, distribute_triangle_points
+from old.MultiObjectiveLinearProgram import MultiObjectiveLinearProgram, Solution
+from old.NormalBoundaryIntersection import NormalBoundaryIntersection #, distribute_line_points, distribute_triangle_points
 
 """
 This script is an example of how to use NBI method with a tri-objective linear program.

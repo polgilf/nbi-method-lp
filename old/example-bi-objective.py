@@ -2,8 +2,8 @@ import pulp
 import numpy as np
 from copy import deepcopy, copy
 
-from MultiObjectiveLinearProgram import MultiObjectiveLinearProgram, Solution
-from NormalBoundaryIntersection import NormalBoundaryIntersection #, distribute_line_points, distribute_triangle_points
+from old.MultiObjectiveLinearProgram import MultiObjectiveLinearProgram, Solution
+from old.NormalBoundaryIntersection import NormalBoundaryIntersection #, distribute_line_points, distribute_triangle_points
 
 """
 This script is an example of how to use NBI method with a bi-objective linear program.
@@ -47,19 +47,23 @@ k = 20
 ###################################################################################
 
 original_problem = MultiObjectiveLinearProgram(prob,objective_functions, objective_names)
+"""
 individual_optima = original_problem.compute_individual_optima() # List of individual optima (solution object)
-
 payoff_table = original_problem.compute_payoff_table() # Payoff table (num_objectives x num_objectives numpy array)
 ideal_point = original_problem.compute_ideal_point() # Ideal point (numpy array)
 nadir_point = original_problem.compute_nadir_point() # Nadir point (numpy array)
+"""
 
 NBI_method = NormalBoundaryIntersection(original_problem, num_reference_points=k)
-NBI_method.compute_representative_pareto_front()
-representative_set = NBI_method.representative_pareto_front
-representative_sol_values = NBI_method.representative_pareto_front_values
-print(representative_sol_values.dtype)
+NBI_method.compute_subset_pareto_front()
+representative_set = NBI_method.subset_pareto_front
+representative_sol_values = NBI_method.subset_pareto_front_values
 
 #NBI_method.plot_solutions_in_objective_space()
+
+print("Reference points: ", NBI_method.reference_points)
+print("Representative set: ", NBI_method.reference_points_dict)
+print("Representative set: ", NBI_method.dict_objective_name_to_value(self)
 NBI_method.plot_NBI_method()
 """
 print("Individual optima: ", [sol.objective_values for sol in individual_optima])
