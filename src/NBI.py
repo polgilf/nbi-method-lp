@@ -182,6 +182,7 @@ def plot_NBI_2D(nbi):
     plt.ylabel(nbi.objectives[1].name)
     plt.title('NBI method, NBI method with ' + str(nbi.num_ref_points) + ' reference points')
     plt.grid(True)
+    plt.gca().set_aspect('equal', adjustable='box')  # Ensure the same scale for x and y axes
     plt.show()
 
 def plot_NBI_3D(nbi):
@@ -221,4 +222,20 @@ def plot_NBI_3D(nbi):
     ax.set_ylabel(nbi.objectives[1].name)
     ax.set_zlabel(nbi.objectives[2].name)
     ax.set_title('NBI method, NBI method with ' + str(nbi.num_ref_points) + ' reference points')
+    
+    # Ensure the same scale for x, y, and z axes
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+    
+    x_range = x_limits[1] - x_limits[0]
+    y_range = y_limits[1] - y_limits[0]
+    z_range = z_limits[1] - z_limits[0]
+    
+    max_range = max(x_range, y_range, z_range)
+    
+    ax.set_xlim3d([x_limits[0], x_limits[0] + max_range])
+    ax.set_ylim3d([y_limits[0], y_limits[0] + max_range])
+    ax.set_zlim3d([z_limits[0], z_limits[0] + max_range])
+
     plt.show()
