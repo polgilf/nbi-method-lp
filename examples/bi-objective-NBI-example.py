@@ -1,7 +1,17 @@
+
+import os
+import sys
+
 import pulp
 import numpy as np
-from src.MOLP import MOLP, Solution
-from src.NBI import NBI, plot_NBI_2D, plot_NBI_3D
+
+# Adding src directory to module search path (sys.path)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
+# Importing from the src directory
+from MOLP import MOLP, Solution
+from NBI import NBI, plot_NBI_2D, plot_NBI_3D
+
 #----------------------------------------------
 # Define the problem
 #----------------------------------------------

@@ -1,10 +1,15 @@
+import os
+import sys
 import pulp
 import numpy as np
 from copy import deepcopy, copy
 from matplotlib import pyplot as plt
 
-from src.MOLP import MOLP, Solution
-from src.utils import distribute_line_points, distribute_triangle_points
+# Adding src directory to module search path (sys.path)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
+from MOLP import MOLP, Solution
+from utils import distribute_line_points, distribute_triangle_points
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 
