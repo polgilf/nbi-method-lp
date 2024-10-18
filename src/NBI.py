@@ -16,30 +16,6 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 class NBI(MOLP):
     '''
     This class defines the Normal Boundary Intersection (NBI) method for multi-objective linear programs.
-
-    Attributes:
-    - prob: Pulp problem object
-    - objectives: list of objective functions (Pulp variables)
-    - variables: list of variables (Pulp variables)
-    - num_ref_points: number of reference points
-    - ref_points_dict: dictionary with reference points {ref_point_id: [objective_values]}
-        - this attribute should be computed by the method compute_ref_points()
-    - normal_vector: normal vector to the hyperplane (numpy array)
-        - this attribute should be computed by the method compute_normal_vector()
-    - solutions_dict: dictionary with solutions {ref_point_id: Solution object}
-        - this attribute should be computed by the method NBI_algorithm()
-
-    Methods:
-    - compute_ref_points(num_points): computes the reference points (returns a dictionary with reference points)
-    - compute_normal_vector(): computes the normal vector to the hyperplane (returns a numpy array)
-    - solve_NBI_subproblem(ref_point): solves the NBI subproblem for a given reference point (returns a Solution object)
-    - NBI_algorithm(): runs the NBI algorithm (returns 1, and sets the solutions_dict attribute)
-        - this method computes the reference points and the normal vector
-    - solutions_values(): returns the objective values of the solutions (numpy array)
-    - solutions_ref_to_values(): returns a dictionary with the reference points and their objective values {ref_point_id: [objective_values]}
-
-    - plot_NBI_2D(): plots the NBI method in 2D
-    - plot_NBI_3D(): plots the NBI method in 3D
     '''
     def __init__(self, prob, objectives, variables):
         super().__init__(prob, objectives, variables)
