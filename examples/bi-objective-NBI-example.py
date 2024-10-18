@@ -108,4 +108,5 @@ print(nbi.solutions_variable_values())
 
 print(' ')
 
-plot_NBI_2D(nbi)
+plot_NBI_2D(nbi, normalize_scale=False)
+plot_NBI_2D(nbi, normalize_scale=True)

@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 # Importing from the src directory
 from MOLP import MOLP, Solution
-from NBI import NBI, plot_NBI_2D, plot_NBI_3D
+from NBI import NBI, plot_NBI_2D, plot_NBI_3D, plot_NBI_3D_to_2D
 
 #----------------------------------------------
 # Define the problem
@@ -109,4 +109,7 @@ print(nbi.solutions_variable_values())
 
 print(' ')
 
-plot_NBI_3D(nbi)
+plot_NBI_3D(nbi, normalize_scale=False)
+plot_NBI_3D(nbi, normalize_scale=True)
+plot_NBI_3D_to_2D(nbi, objectives_to_use=[1,1,0], swap_axes=False, normalize_scale=True)
+plot_NBI_3D_to_2D(nbi, objectives_to_use=[0,1,1], swap_axes=False, normalize_scale=True)
