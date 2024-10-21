@@ -13,130 +13,244 @@ from utils import distribute_line_points, distribute_triangle_points
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 
-class NBI(MOLP):
+class nNBI(MOLP):
     '''
     This class defines the Normal Boundary Intersection (NBI) method for multi-objective linear programs.
     '''
     def __init__(self, prob, objectives, variables):
         super().__init__(prob, objectives, variables)
         self.num_ref_points = None
+
+        self.normalized_ref_points_dict = None
+        self.normalized_individual_optima = []
+        self.normalized_normal_vector = None
+        self.normalized_solutions_dict = None
+        self.normalized_objectives = []
+
+        self.original_prob = deepcopy(prob)
+        self.original_objectives = deepcopy(objectives)
+        self.original_variables = deepcopy(variables)
+
+        self.solutions_dict = {}
         self.ref_points_dict = None
-        self.normal_vector = None
-        self.solutions_dict = None
+
         
-    def compute_ref_points(self, num_points=None):
-        if num_points is not None:
-            self.num_ref_points = num_points
+    def normalize_objectives_and_individual_optima(self):
+        self.individual_optima = []
+        self.normalized_individual_optima = []
+        # Compute individual optima if not already computed
+        self.compute_all_individual_optima()
+        # Get ideal and nadir points
+        ideal_point = self.ideal_point()
+        nadir_point = self.nadir_point()
+        # Normalize objectives
+        for i in range(self.num_objectives()):
+            new_objective = (self.objectives[i] - ideal_point[i]) / (nadir_point[i] - ideal_point[i])
+            new_objective.name = self.objectives[i].name+'norm'
+            self.normalized_objectives.append(new_objective)
+        # Normalize individual optima
+        for original_individual_optima in self.individual_optima:
+            original_objecives = original_individual_optima.objectives
+            normalized_objectives = [(original_objecives[i] - ideal_point[i]) / (nadir_point[i] - ideal_point[i]) for i in range(self.num_objectives())]
+            normalized_individual_optima = Solution(normalized_objectives, original_individual_optima.variables)
+            self.normalized_individual_optima.append(normalized_individual_optima)  
+
+
+    def normalized_payoff_matrix(self):
+        # Normalize objectives and individual optima if not already computed
+        if self.normalized_individual_optima == []:
+            self.normalize_objectives_and_individual_optima()
+        # Compute payoff table
+        payoff_matrix = np.array([[opt.objective_values()[j] for j in range(self.num_objectives())] for opt in self.normalized_individual_optima])
+        return payoff_matrix
+
+
+    def normalized_ideal_point(self):
+        return np.min(self.normalized_payoff_matrix(), axis=0)
+    
+
+    def normalized_nadir_point(self):
+        return np.max(self.normalized_payoff_matrix(), axis=0)
+
+
+    def normalize_objectives_and_individual_optima(self):
+        self.normalized_individual_optima = []
         # Compute individual optima if not already computed
         if self.individual_optima == []:
             self.compute_all_individual_optima()
+        # Get ideal and nadir points
+        ideal_point = self.ideal_point()
+        nadir_point = self.nadir_point()
+        # Normalize individual optima and objectives
+        for original_individual_optima in self.individual_optima:
+            # Normalize objectives
+            original_objecives = original_individual_optima.objectives
+            normalized_obbjectives = []
+            for i in range(self.num_objectives()):
+                new_objective = (original_objecives[i] - ideal_point[i]) / (nadir_point[i] - ideal_point[i])
+                new_objective.name = original_objecives[i].name+'norm'
+                normalized_obbjectives.append(new_objective)
+            self.normalized_objectives = normalized_obbjectives
+            # Normalize individual optima
+            normalized_individual_optima = Solution(self.normalized_objectives, original_individual_optima.variables)
+            self.normalized_individual_optima.append(normalized_individual_optima)
+
+
+    def compute_normalized_ref_points(self, num_points=None):
+        if num_points is not None:
+            self.num_ref_points = num_points
         # Bi-objective problems
         if self.num_objectives() == 2:
-            A = self.individual_optima[0].objective_values()
-            B = self.individual_optima[1].objective_values()
-            ref_points = distribute_line_points(A, B, self.num_ref_points)
-            self.ref_points_dict = {f'q{i+1}': ref_points[i] for i in range(ref_points.shape[0])}
+            A = self.normalized_individual_optima[0].objective_values()
+            B = self.normalized_individual_optima[1].objective_values()
+            normalized_ref_points = distribute_line_points(A, B, self.num_ref_points)
+            self.normalized_ref_points_dict = {f'q{i+1}': normalized_ref_points[i] for i in range(normalized_ref_points.shape[0])}
+   
         # Tri-objective problems
         elif self.num_objectives() == 3:
-            A = self.individual_optima[0].objective_values()
-            B = self.individual_optima[1].objective_values()
-            C = self.individual_optima[2].objective_values()
-            ref_points = distribute_triangle_points(A, B, C, self.num_ref_points)
-            self.ref_points_dict = {f'q{i+1}': ref_points[i] for i in range(ref_points.shape[0])}
+            A = self.normalized_individual_optima[0].objective_values()
+            B = self.normalized_individual_optima[1].objective_values()
+            C = self.normalized_individual_optima[2].objective_values()
+            normalized_ref_points = distribute_triangle_points(A, B, C, self.num_ref_points)
+            self.normalized_ref_points_dict = {f'q{i+1}': normalized_ref_points[i] for i in range(normalized_ref_points.shape[0])}
         # More than three objectives not implemented
         else:
             raise ValueError("This method is only implemented for bi-objective and tri-objective problems.")
-        # Return dict with reference points
-        return self.ref_points_dict
-    
-    def ref_points_values(self):
-        if self.ref_points_dict is None:
-            raise ValueError("No reference points have been computed yet.")
-        return np.array([ref_point for ref_point in self.ref_points_dict.values()])
 
-    def compute_normal_vector(self):
-        # Compute individual optima if not already computed
-        if self.individual_optima == []:
-            self.compute_all_individual_optima()
+        # Return dict with reference points
+        return self.normalized_ref_points_dict
+
+
+    def compute_normalized_normal_vector(self):
+        # Normalize objectives and individual optima if not already computed
+        if self.normalized_individual_optima == []:
+            self.normalize_objectives_and_individual_optima()
+        # Compute normalized reference points if not already computed
+        if self.normalized_ref_points_dict is None:
+            self.compute_normalized_ref_points()
         # Bi-objective problems
         if self.num_objectives() == 2:
-            A = self.individual_optima[0].objective_values()
-            B = self.individual_optima[1].objective_values()
+            A = self.normalized_individual_optima[0].objective_values()
+            B = self.normalized_individual_optima[1].objective_values()
             direction_vector = B - A
             # Two possible normal vectors
             normal_vector_1 = np.array([-direction_vector[1], direction_vector[0]]) 
             normal_vector_2 = -normal_vector_1
             # Determine which normal vector points to the half-space where the ideal point is located
-            if np.dot(normal_vector_1, self.ideal_point() - A) > 0:
-                self.normal_vector = normal_vector_1 / np.linalg.norm(normal_vector_1)
+            if np.dot(normal_vector_1, self.normalized_ideal_point() - A) > 0:
+                self.normalized_normal_vector = normal_vector_1 / np.linalg.norm(normal_vector_1)
             else:
-                self.normal_vector = normal_vector_2 / np.linalg.norm(normal_vector_1)
+                self.normalized_normal_vector = normal_vector_2 / np.linalg.norm(normal_vector_1)
+       
         # Tri-objective problems
         elif self.num_objectives() == 3:
-            A = self.individual_optima[0].objective_values()
-            B = self.individual_optima[1].objective_values()
-            C = self.individual_optima[2].objective_values()
+            A = self.normalized_individual_optima[0].objective_values()
+            B = self.normalized_individual_optima[1].objective_values()
+            C = self.normalized_individual_optima[2].objective_values()
             direction_vector_1 = B - A
             direction_vector_2 = C - A
             # Two possible normal vectors
             normal_vector_1 = np.cross(direction_vector_1, direction_vector_2)
             normal_vector_2 = -normal_vector_1
             # Determine which normal vector points to the half-space where the ideal point is located
-            if np.dot(normal_vector_1, self.ideal_point() - A) > 0:
-                self.normal_vector = normal_vector_1 / np.linalg.norm(normal_vector_1)
+            if np.dot(normal_vector_1, self.normalized_ideal_point() - A) > 0:
+                self.normalized_normal_vector = normal_vector_1 / np.linalg.norm(normal_vector_1)
             else:
-                self.normal_vector = normal_vector_2 / np.linalg.norm(normal_vector_1)
+                self.normalized_normal_vector = normal_vector_2 / np.linalg.norm(normal_vector_1)
         # More than three objectives not implemented
         else:
             raise ValueError("This method is only implemented for bi-objective and tri-objective problems.")
-        return self.normal_vector
-    
-    def solve_NBI_subproblem(self, ref_point):
+
+        return self.normalized_normal_vector
+
+    def solve_normalized_NBI_subproblem(self, normalized_ref_point):
         sub_problem = deepcopy(self.prob)
         t = pulp.LpVariable("t", 0, None)
         sub_problem.setObjective(t)
         sub_problem.sense = pulp.LpMaximize
         for i in range(self.num_objectives()):
-            sub_problem += ref_point[i] + t * self.normal_vector[i] == self.objectives[i]
+            sub_problem += normalized_ref_point[i] + t * self.normalized_normal_vector[i] == self.normalized_objectives[i]
         sub_problem.solve(pulp.PULP_CBC_CMD(msg=0))
         new_variables = []
         # Update variables but not the objective functions (already updated)
         for v in sub_problem.variables():
             if v.name in [var.name for var in self.variables]:
                 new_variables.append(v)
-        solution = Solution(self.objectives, new_variables)
+        solution = Solution(self.normalized_objectives, new_variables)
         sub_problem = None
         return solution
 
-    def NBI_algorithm(self, num_points):
+    def normalized_NBI_algorithm(self, num_points):
         self.num_ref_points = num_points
         # Compute reference points and normal vector
-        self.compute_ref_points()
-        self.compute_normal_vector()
-        self.solutions_dict = {}
+        self.compute_normalized_ref_points()
+        self.compute_normalized_normal_vector()
+        self.normalized_solutions_dict = {}
         # Solve NBI subproblem for each reference point
-        for ref_id, ref_point in self.ref_points_dict.items():
-            solution = self.solve_NBI_subproblem(ref_point)
+        for ref_id, ref_point in self.normalized_ref_points_dict.items():
+            solution = self.solve_normalized_NBI_subproblem(ref_point)
             # Store solution in dictionary {ref_point_id: Solution object}
-            self.solutions_dict[ref_id] = solution
+            self.normalized_solutions_dict[ref_id] = solution
             #print('Inside NBI algorithm:', ref_id, ' ', 'ref: ', ref_point, 'sol:', solution.objective_values(), 'var:', solution.variable_values())
         print("NBI algorithm completed.")
+        return self.normalized_solutions_dict
+
+
+    def denormalize_solutions(self):
+        # Denormalize solutions and store in dictionary {ref_point_id: Solution object}
+        denormalized_solutions_dict = {}
+        for ref_id, normalized_solution in self.normalized_solutions_dict.items():
+            # Denormalize objectives
+            normalized_objectives = normalized_solution.objectives
+            denormalized_objectives = []
+            # Denormalize objectives and return to original names
+            for i in range(self.num_objectives()):
+                denormalized_objective = normalized_objectives[i] * (self.nadir_point()[i] - self.ideal_point()[i]) + self.ideal_point()[i]
+                denormalized_objective.name = normalized_objectives[i].name.replace('norm', '')             
+                denormalized_objectives.append(denormalized_objective)
+            self.objectives = denormalized_objectives
+            # Denormalize solution
+            denormalized_solution = Solution(denormalized_objectives, normalized_solution.variables)
+            denormalized_solutions_dict[ref_id] = denormalized_solution
+        self.solutions_dict = denormalized_solutions_dict
+        # Denormalize reference points
+        self.denormalize_ref_points()
+
         return self.solutions_dict
     
+
+    def denormalize_ref_points(self):
+        self.ref_points_dict = {}
+        for ref_id, normalized_ref_point in self.normalized_ref_points_dict.items():
+            denormalized_ref_point = []
+            for i in range(self.num_objectives()):
+                denormalized_ref_point.append(normalized_ref_point[i] * (self.nadir_point()[i] - self.ideal_point()[i]) + self.ideal_point()[i])
+            self.ref_points_dict[ref_id] = np.array(denormalized_ref_point)
+
+    
+    def ref_points_values(self):
+            if self.ref_points_dict is None:
+                raise ValueError("No reference points have been computed yet.")
+            return np.array([ref_point for ref_point in self.ref_points_dict.values()])
+        
+
     def solutions_values(self):
         if self.solutions_dict is None:
             raise ValueError("No solutions have been computed yet.")
         return np.array([sol.objective_values() for sol in self.solutions_dict.values()])
-    
+
+
     def solutions_ref_to_values(self):
         if self.solutions_dict is None:
             raise ValueError("No solutions have been computed yet.")
         return {ref_id: sol.objective_values() for ref_id, sol in self.solutions_dict.items()}
-    
+
+
     def solutions_variable_values(self):
         if self.solutions_dict is None:
             raise ValueError("No solutions have been computed yet.")
         return np.array([sol.variable_values() for sol in self.solutions_dict.values()])
+
 
 def plot_NBI_2D(nbi, normalize_scale = True):
     objective_values = nbi.solutions_ref_to_values() # Dict with refpoint_id: [objective_values_of_solution]
@@ -193,6 +307,7 @@ def plot_NBI_3D(nbi, normalize_scale = True):
     C = nbi.individual_optima[2].objective_values()
     vertices = np.array([A, B, C])
     poly = Poly3DCollection([vertices], alpha=0.3, facecolor='blue')
+    print(poly)
     ax.add_collection3d(poly)
 
     ax.set_xlabel(nbi.objectives[0].name)
