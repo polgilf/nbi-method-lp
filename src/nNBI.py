@@ -307,7 +307,6 @@ def plot_NBI_3D(nbi, normalize_scale = True):
     C = nbi.individual_optima[2].objective_values()
     vertices = np.array([A, B, C])
     poly = Poly3DCollection([vertices], alpha=0.3, facecolor='blue')
-    print(poly)
     ax.add_collection3d(poly)
 
     ax.set_xlabel(nbi.objectives[0].name)
